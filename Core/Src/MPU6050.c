@@ -38,7 +38,7 @@ void MPU6050_init(void)
 
 //Function with multiple return using pointer
 
-void MPU6050_Read_Accel (float* Ax, float* Ay, float* Az)
+void MPU6050_Read_Accel(float* Ax, float* Ay, float* Az)
 {
 	uint8_t Rec_Data[6];
 
