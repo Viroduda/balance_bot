@@ -46,10 +46,14 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-float x_raw = 0.0f, y_raw = 0.0f, z_raw = 0.0f;
-float* Ax_val = &x_raw;
-float* Ay_val = &y_raw;
-float* Az_val = &z_raw;
+float ax_raw = 0.0f, ay_raw = 0.0f, az_raw = 0.0f;
+float* Ax_val = &ax_raw;
+float* Ay_val = &ay_raw;
+float* Az_val = &az_raw;
+float gx_raw = 0.0f, gy_raw = 0.0f, gz_raw = 0.0f;
+float* Gx_val = &gx_raw;
+float* Gy_val = &gy_raw;
+float* Gz_val = &gz_raw;
 char tx_buff[64];
 /* USER CODE END PV */
 
@@ -110,8 +114,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	MPU6050_Read_Accel(Ax_val, Ay_val, Az_val);
+	MPU6050_Read_Gyro(Gx_val, Gy_val, Gz_val);
 
-	int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
+	//int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
+	int len = snprintf(tx_buff, sizeof(tx_buff), "Gx: %.4f / Gy: %.4f / Gz: %.4f\r\n", *Gx_val, *Gy_val, *Gz_val);
 
 	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
 
