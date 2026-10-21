@@ -32,7 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define MPU6050_ADDR 0xD0
+#define CONFIG 0x1A
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,6 +55,7 @@ float gx_raw = 0.0f, gy_raw = 0.0f, gz_raw = 0.0f;
 float* Gx_val = &gx_raw;
 float* Gy_val = &gy_raw;
 float* Gz_val = &gz_raw;
+uint8_t low_pass_filt_value = 6;
 char tx_buff[64];
 /* USER CODE END PV */
 
@@ -104,6 +106,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   MPU6050_init();
+  HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, CONFIG, 1, &low_pass_filt_value, 1, 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
