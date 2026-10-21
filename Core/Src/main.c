@@ -109,9 +109,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_Gyro(Ax_val, Ay_val, Az_val);
+	MPU6050_Read_Accel(Ax_val, Ay_val, Az_val);
 
-	int len = snprintf(tx_buff, sizeof(tx_buff), "Az: %.4f\r\n", *Ax_val);
+	int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
 
 	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
 

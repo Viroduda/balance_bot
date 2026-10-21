@@ -48,9 +48,9 @@ void MPU6050_Read_Accel(float* Ax, float* Ay, float* Az)
 	Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data [3]);
 	Accel_Z_RAW = (int16_t)(Rec_Data[4] << 8 | Rec_Data [5]);
 	
-	*Ax = Accel_X_RAW*100/16384.0;
-	*Ay = Accel_Y_RAW*100/16384.0;
-	*Az = Accel_Z_RAW*100/16384.0;
+	*Ax = Accel_X_RAW/16384.0;
+	*Ay = Accel_Y_RAW/16384.0;
+	*Az = Accel_Z_RAW/16384.0;
 }
 
 void MPU6050_Read_Gyro(float* Gx, float* Gy, float* Gz)
