@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "MPU6050.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +56,7 @@ float gx_raw = 0.0f, gy_raw = 0.0f, gz_raw = 0.0f;
 float* Gx_val = &gx_raw;
 float* Gy_val = &gy_raw;
 float* Gz_val = &gz_raw;
-uint8_t low_pass_filt_value = 6;
+int16_t accAngle = 0;
 char tx_buff[64];
 /* USER CODE END PV */
 
@@ -106,7 +107,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   MPU6050_init();
-  HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, CONFIG, 1, &low_pass_filt_value, 1, 1000);
+ //HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, CONFIG, 1, &low_pass_filt_value, 1, 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,8 +120,11 @@ int main(void)
 	MPU6050_Read_Accel(Ax_val, Ay_val, Az_val);
 	MPU6050_Read_Gyro(Gx_val, Gy_val, Gz_val);
 
-	//int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
-	int len = snprintf(tx_buff, sizeof(tx_buff), "Gx: %.4f / Gy: %.4f / Gz: %.4f\r\n", *Gx_val, *Gy_val, *Gz_val);
+	accAngle = atan2(*Ax_val, *Az_val) * 180 / M_PI;
+	//gyAngle =
+
+	int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
+	//int len = snprintf(tx_buff, sizeof(tx_buff), "Gx: %.4f / Gy: %.4f / Gz: %.4f\r\n", *Gx_val, *Gy_val, *Gz_val);
 
 	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
 
