@@ -64,7 +64,7 @@ void MPU6050_Read_Gyro(float* Gx, float* Gy, float* Gz)
     Gyro_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
     Gyro_Z_RAW = (int16_t)(Rec_Data[4] << 8 | Rec_Data[5]);
 
-    *Gx = Gyro_X_RAW / 131.0;
-    *Gy = Gyro_Y_RAW / 131.0;
-    *Gz = Gyro_Z_RAW / 131.0;
+    *Gx = (float)Gyro_X_RAW / 131.0f;
+    *Gy = (float)Gyro_Y_RAW / 131.0f;
+    *Gz = (float)Gyro_Z_RAW / 131.0f;
 }

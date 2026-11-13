@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,7 +48,16 @@ I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart2;
 
+/* Definitions for MPU6050_read */
+osThreadId_t MPU6050_readHandle;
+const osThreadAttr_t MPU6050_read_attributes = {
+  .name = "MPU6050_read",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
+uint16_t counter = 0;
+float gyro_offset = 0;
 float ax_raw = 0.0f, ay_raw = 0.0f, az_raw = 0.0f;
 float* Ax_val = &ax_raw;
 float* Ay_val = &ay_raw;
@@ -56,8 +66,15 @@ float gx_raw = 0.0f, gy_raw = 0.0f, gz_raw = 0.0f;
 float* Gx_val = &gx_raw;
 float* Gy_val = &gy_raw;
 float* Gz_val = &gz_raw;
-int16_t accAngle = 0;
+float accAngle = 0;
+float gyAngle = 0;
+float pitchAngle = 0;
+float prevAngle = 0;
+uint16_t samp_period = 100;
+float alpha = 0.75;
 char tx_buff[64];
+uint32_t currentTick = 0;
+uint32_t targetTick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +82,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
+void MPU6050_read_callback(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -110,6 +129,42 @@ int main(void)
  //HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, CONFIG, 1, &low_pass_filt_value, 1, 1000);
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of MPU6050_read */
+  MPU6050_readHandle = osThreadNew(MPU6050_read_callback, NULL, &MPU6050_read_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -117,18 +172,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	MPU6050_Read_Accel(Ax_val, Ay_val, Az_val);
-	MPU6050_Read_Gyro(Gx_val, Gy_val, Gz_val);
-
-	accAngle = atan2(*Ax_val, *Az_val) * 180 / M_PI;
-	//gyAngle =
-
-	int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
-	//int len = snprintf(tx_buff, sizeof(tx_buff), "Gx: %.4f / Gy: %.4f / Gz: %.4f\r\n", *Gx_val, *Gy_val, *Gz_val);
-
-	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
-
-	HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }
@@ -282,6 +325,77 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_MPU6050_read_callback */
+/**
+  * @brief  Function implementing the MPU6050_read thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_MPU6050_read_callback */
+void MPU6050_read_callback(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+	while(counter < 500)
+	{
+		MPU6050_Read_Gyro(Gx_val, Gy_val, Gz_val);
+		gyro_offset = gyro_offset + *Gy_val / 500.0f;
+		int len = snprintf(tx_buff, sizeof(tx_buff), "Offset: %.4f\r\n", *Gy_val);
+		HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
+		counter++;
+	}
+
+	const uint32_t ticksPeriod = pdMS_TO_TICKS(samp_period);
+	/* Infinite loop */
+	for(;;)
+	{
+		currentTick = osKernelGetTickCount();
+		targetTick = currentTick + ticksPeriod;
+		MPU6050_Read_Accel(Ax_val, Ay_val, Az_val);
+		MPU6050_Read_Gyro(Gx_val, Gy_val, Gz_val);
+
+		accAngle = atan2(*Ax_val, *Az_val);// * 180 / M_PI;
+		gyAngle = (*Gy_val - gyro_offset) * M_PI / 180;
+
+		pitchAngle = (alpha * (prevAngle - gyAngle * ((float)samp_period/1000)) + (1 - alpha) * accAngle);
+		prevAngle = pitchAngle;
+
+		//int len = snprintf(tx_buff, sizeof(tx_buff), "Ax: %.4f / Ay: %.4f / Az: %.4f\r\n", *Ax_val, *Ay_val, *Az_val);
+		//int len = snprintf(tx_buff, sizeof(tx_buff), "Gx: %.4f / Gy: %.4f / Gz: %.4f\r\n", *Gx_val, *Gy_val, *Gz_val);
+		int len = snprintf(tx_buff, sizeof(tx_buff), "pitchAngle: %.4f\r\n", pitchAngle * 180 / M_PI);
+
+		HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, len, 1000);
+		currentTick = osKernelGetTickCount();
+		osDelayUntil(targetTick);
+	}
+//	uint32_t currentTick = osKernelGetTickCount();
+//	const uint32_t period = pdMS_TO_TICKS(1000);
+//	uint32_t targetTick = currentTick + period;
+//	osDelayUntil(targetTick);
+  /* USER CODE END 5 */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
